@@ -1,0 +1,35 @@
+#!/bin/bash
+
+DATA_DIR="/etc/ipset-sync/data"
+LOG_DIR="/etc/ipset-sync/logs"
+LOG_FILE="$LOG_DIR/import.log"
+
+mkdir -p "$LOG_DIR"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+if [ ! -d "$DATA_DIR" ]; then
+    log "❌ Data directory not found: $DATA_DIR"
+    exit 1
+fi
+
+for file in "$DATA_DIR"/*.txt; do
+    [ -e "$file" ] || continue
+
+    listname=$(basename "$file" .txt)
+
+    log "🔁 Importing $listname from $file..."
+
+    # Створюємо список
+    ipset create "$listname" hash:net family inet hashsize 1024 maxelem 65536
+
+    # Імпорт
+    if ipset restore < "$file" 2>>"$LOG_FILE"; then
+        log "✅ Imported: $listname"
+    else
+        log "❌ Error importing: $listname"
+    fi
+
+done
